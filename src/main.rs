@@ -2,6 +2,8 @@ use tracing::Level;
 
 use std::sync::Arc;
 
+use std::fs;
+
 use dioxus::{prelude::dioxus_elements::FileEngine, prelude::*};
 
 use slug::slugify;
@@ -62,7 +64,7 @@ fn App() -> Element {
                 li {
                     class: "px-4 py-2 bg-white hover:bg-sky-100 hover:text-sky-900 border-b last:border-none border-gray-200 transition-all duration-300 ease-in-out",
                     span {
-                        {format!("{} ->", file_path)}, strong { {process_path(file_path).unwrap_or_else(|| "invalid path".to_string()) }}
+                        {format!("{} -> ", file_path)}, strong { {process_path(file_path).unwrap_or_else(|| "invalid path".to_string()) }}
                      }
                 }
             }
@@ -71,7 +73,10 @@ fn App() -> Element {
         { haveFiles.then(|| rsx!(
             button {
             class: "w-full font-medium text-lg cursor-pointer border-0 py-3 px-4 mr-4 bg-gray-800 :hover:bg-gray-700 text-white rounded block",
-            onclick: move |event| tracing::info!("Clicked! Event: {event:?}"), "Renommer les fichiers" }))}
+            onclick: move |_| rename_files(&files_uploaded.read()),
+            "Renommer les fichiers"
+            }
+        ))}
 
     }
 }
@@ -91,4 +96,14 @@ fn slugify_filename(filename: &str) -> String {
 
 fn process_path(path: &str) -> Option<String> {
     get_filename_from_path(path).map(|filename| slugify_filename(&filename))
+}
+
+fn rename_files(files: &[String]) {
+    for file_path in files {
+        if let Some(new_name) = process_path(file_path) {
+            let new_path = Path::new(file_path).with_file_name(new_name);
+            fs::rename(file_path, new_path).expect("Failed to rename file");
+        }
+    }
+    std::process::exit(0);
 }
